@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.3.0/dist/web3.min.js"></script>
+    <title>Decentralized Voting App</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 20px;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        #votingForm {
+            margin-top: 20px;
+        }
+
+        #winningProposal {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Decentralized Voting App</h1>
+
+    <div id="votingForm">
+        <h2>Vote for a Proposal</h2>
+        <form onsubmit="return vote()">
+            <label for="proposal">Select Proposal:</label>
+            <select id="proposal" required>
+                <option value="0">Coffee</option>
+                <option value="1">Tea</option>
+            </select>
+            <br>
+            <label for="walletAddress">Enter Wallet Address:</label>
+            <input type="text" id="walletAddress" placeholder="0xYourAddress" required>
+            <br>
+            <button type="submit">Vote</button>
+        </form>
+    </div>
+
+    <div id="winningProposal">
+        <h2>Winning Proposal</h2>
+        <p id="winningProposalResult">No winner yet</p>
+        <button onclick="showWinnerDetails()">Show Winner Details</button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (window.ethereum) {
+                window.web3 = new Web3(ethereum);
+                try {
+                    await ethereum.enable();
+                } catch (error) {
+                    console.error("User denied account access");
+                }
+            } else if (window.web3) {
+                window.web3 = new Web3(web3.currentProvider);
+            } else {
+                console.error("Non-Ethereum browser detected. You should consider trying MetaMask!");
+            }
+
+            // Replace the following ABI with your actual smart contract ABI
+            const abi = [
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "voter",
+				"type": "address"
+			}
+		],
+		"name": "giveRightToVote",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string[]",
+				"name": "proposalNames",
+				"type": "string[]"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "constructor"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "proposal",
+				"type": "uint256"
+			}
+		],
+		"name": "vote",
+		"outputs": [],
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "chairperson",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "proposals",
+		"outputs": [
+			{
+				"internalType": "string",
+				"name": "name",
+				"type": "string"
+			},
+			{
+				"internalType": "uint256",
+				"name": "votecount",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "voters",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "voted",
+				"type": "bool"
+			},
+			{
+				"internalType": "uint256",
+				"name": "vote",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "weight",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "winningName",
+		"outputs": [
+			{
+				"internalType": "string",
+				"name": "winningName_",
+				"type": "string"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "winningProposal",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "winningProposal_",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	}
+];
+
+            const contractAddress = '0xa948Eb8b6FD5c6f809D05FAaB6E8690f86f548B8';
+            const contract = new web3.eth.Contract(abi, contractAddress);
+
+            window.vote = async () => {
+                const selectedProposalIndex = document.getElementById('proposal').value;
+                const walletAddress = document.getElementById('walletAddress').value;
+
+                await contract.methods.vote(selectedProposalIndex).send({ from: walletAddress });
+                alert('Vote submitted successfully!');
+                return false; // Prevent form submission
+            };
+
+            window.getWinningProposal = async () => {
+        const winningProposalIndex = await contract.methods.winningProposal().call();
+        const winningProposal = await contract.methods.proposals(winningProposalIndex).call();
+
+        const winningProposalName = winningProposal.name;
+
+        document.getElementById('winningProposalResult').innerText = winningProposalName;
+    };
+
+
+            window.showWinnerDetails = async () => {
+        const winningProposalIndex = await contract.methods.winningProposal().call();
+        const winningProposal = await contract.methods.proposals(winningProposalIndex).call();
+
+        const winningProposalName = winningProposal.name;
+        const winningVoteCount = winningProposal.votecount;
+
+        const detailsMessage = `Winner: ${winningProposalName} | Votes: ${winningVoteCount}`;
+        alert(detailsMessage);
+            };
+
+            // Display the initial winning proposal
+            getWinningProposal();
+        });
+    </script>
+</body>
+</html>
+
